@@ -1,36 +1,23 @@
 (() => {
-  const NOISE_TEXTURE =
-    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E" +
-    "%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E" +
-    "%3CfeColorMatrix type='matrix' values='0 0 0 0 0.13  0 0 0 0 0.12  0 0 0 0 0.11  0 0 0 0.05 0'/%3E%3C/filter%3E" +
-    "%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
-
-  const FALLBACK_GRADIENTS = [
-    "linear-gradient(160deg, #D9F0E4 0%, #FFFFFF 62%)",
-    "linear-gradient(160deg, #FCE1E6 0%, #FFFFFF 62%)",
-    "linear-gradient(160deg, #DCEBFA 0%, #FFFFFF 62%)",
-    "linear-gradient(160deg, #E9E1F7 0%, #FFFFFF 62%)",
-  ];
-  const FALLBACK_BORDERS = ["#ffe1d0", "#e1eecc"];
+  const FALLBACK_STRIPS = ["#ffe1d0", "#e1eecc", "#dcebfa", "#e9e1f7"];
 
   const CATEGORY_RULES = [
-    { test: /princesa|muñeca/, gradient: "linear-gradient(160deg, #FCE1E6 0%, #FFFFFF 62%)", border: "#F6B8C4" },
-    { test: /tocador|maquillaje|accesorio|bisuteria|bisutería|pulsera|trenza|jewelry/, gradient: "linear-gradient(160deg, #E9E1F7 0%, #FFFFFF 62%)", border: "#C7B8ED" },
-    { test: /dibujo/, gradient: "linear-gradient(160deg, #FDECC8 0%, #FFFFFF 62%)", border: "#F0CE85" },
-    { test: /policia|policía|carro|pista|excavadora|control remoto/, gradient: "linear-gradient(160deg, #DCEBFA 0%, #FFFFFF 62%)", border: "#A8CBEE" },
-    { test: /pistola|rifle/, gradient: "linear-gradient(160deg, #FDE3CC 0%, #FFFFFF 62%)", border: "#F4B784" },
-    { test: /bebe|bebé/, gradient: "linear-gradient(160deg, #DCEFFB 0%, #FFFDF6 62%)", border: "#A9D3EC" },
-    { test: /cocina/, gradient: "linear-gradient(160deg, #CDEFE9 0%, #FFFFFF 62%)", border: "#8ED9C9" },
-    { test: /dinosaurio/, gradient: "linear-gradient(160deg, #DCE4C2 0%, #FFFFFF 62%)", border: "#B3C182" },
-    { test: /instrumento|guitarra|musical/, gradient: "linear-gradient(160deg, #DAD6F2 0%, #FFFFFF 62%)", border: "#B0A6DD" },
+    { test: /princesa|muñeca/, strip: "#F6B8C4" },
+    { test: /tocador|maquillaje|accesorio|bisuteria|bisutería|pulsera|trenza|jewelry/, strip: "#C7B8ED" },
+    { test: /dibujo/, strip: "#F0CE85" },
+    { test: /policia|policía|carro|pista|excavadora|control remoto/, strip: "#A8CBEE" },
+    { test: /pistola|rifle/, strip: "#F4B784" },
+    { test: /bebe|bebé/, strip: "#A9D3EC" },
+    { test: /cocina/, strip: "#8ED9C9" },
+    { test: /dinosaurio/, strip: "#B3C182" },
+    { test: /instrumento|guitarra|musical/, strip: "#B0A6DD" },
   ];
 
   function categoryStyle(name, index) {
     const n = name.toLowerCase();
     const rule = CATEGORY_RULES.find((r) => r.test.test(n));
     return {
-      gradient: rule ? rule.gradient : FALLBACK_GRADIENTS[index % FALLBACK_GRADIENTS.length],
-      border: rule ? rule.border : FALLBACK_BORDERS[index % FALLBACK_BORDERS.length],
+      strip: rule ? rule.strip : FALLBACK_STRIPS[index % FALLBACK_STRIPS.length],
     };
   }
 
@@ -55,25 +42,26 @@
 
   let decorated = [];
 
-  // Construido vía DOM (no como string de HTML): el degradado de cada
-  // tarjeta combina una textura SVG con comillas dobles propias, y al
-  // interpolarla dentro de un atributo style="..." con comillas dobles
-  // el navegador cortaba el atributo a la mitad — la tarjeta perdía el
-  // color de fondo. Asignar el estilo por JS evita el conflicto de comillas.
   function buildCard(p) {
     const inStock = isInStock(p);
     const card = document.createElement("button");
     card.type = "button";
     card.className = "card" + (inStock ? "" : " card--out-of-stock");
     card.dataset.ref = p.ref;
-    card.style.borderColor = p.border;
-    card.style.backgroundImage = `${NOISE_TEXTURE}, ${p.gradient}`;
+
+    const strip = document.createElement("div");
+    strip.className = "card__strip";
+    strip.style.background = p.strip;
+    card.appendChild(strip);
 
     const watermark = document.createElement("img");
     watermark.className = "card__watermark";
     watermark.src = LOGO_URL;
     watermark.alt = "";
     card.appendChild(watermark);
+
+    const content = document.createElement("div");
+    content.className = "card__content";
 
     const media = document.createElement("div");
     media.className = "card__media";
@@ -88,22 +76,22 @@
     badge.className = inStock ? "badge badge--stock" : "badge badge--out";
     badge.textContent = inStock ? "Disponible" : "Agotado";
     media.appendChild(badge);
-    card.appendChild(media);
+    content.appendChild(media);
 
     const ref = document.createElement("span");
     ref.className = "tag tag--outline";
     ref.textContent = `Ref. ${p.ref}`;
-    card.appendChild(ref);
+    content.appendChild(ref);
 
     const title = document.createElement("div");
     title.className = "card__title";
     title.textContent = p.name;
-    card.appendChild(title);
+    content.appendChild(title);
 
     const price = document.createElement("div");
     price.className = "card__price";
     price.textContent = formatCOP(p.price);
-    card.appendChild(price);
+    content.appendChild(price);
 
     const meta = document.createElement("div");
     meta.className = "card__meta";
@@ -115,8 +103,9 @@
       medidas.textContent = `📐 ${p.medidas}`;
       meta.appendChild(medidas);
     }
-    card.appendChild(meta);
+    content.appendChild(meta);
 
+    card.appendChild(content);
     return card;
   }
 
