@@ -55,29 +55,69 @@
 
   let decorated = [];
 
-  function cardMarkup(p) {
+  // Construido vía DOM (no como string de HTML): el degradado de cada
+  // tarjeta combina una textura SVG con comillas dobles propias, y al
+  // interpolarla dentro de un atributo style="..." con comillas dobles
+  // el navegador cortaba el atributo a la mitad — la tarjeta perdía el
+  // color de fondo. Asignar el estilo por JS evita el conflicto de comillas.
+  function buildCard(p) {
     const inStock = isInStock(p);
-    const badge = inStock
-      ? `<span class="badge badge--stock">Disponible</span>`
-      : `<span class="badge badge--out">Agotado</span>`;
-    const medidas = p.medidas ? `<span>📐 ${p.medidas}</span>` : "";
-    return `
-      <button type="button" class="card${inStock ? "" : " card--out-of-stock"}"
-        style="border-color:${p.border};background-image:${NOISE_TEXTURE}, ${p.gradient}"
-        data-ref="${p.ref}">
-        <img class="card__watermark" src="${LOGO_URL}" alt="">
-        <div class="card__media">
-          <img class="card__image" src="${p.image_url}" alt="${p.name}" loading="lazy">
-          ${badge}
-        </div>
-        <span class="tag tag--outline">Ref. ${p.ref}</span>
-        <div class="card__title">${p.name}</div>
-        <div class="card__price">${formatCOP(p.price)}</div>
-        <div class="card__meta">
-          <span>📦 BTO: ${p.bto}</span>
-          ${medidas}
-        </div>
-      </button>`;
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "card" + (inStock ? "" : " card--out-of-stock");
+    card.dataset.ref = p.ref;
+    card.style.borderColor = p.border;
+    card.style.backgroundImage = `${NOISE_TEXTURE}, ${p.gradient}`;
+
+    const watermark = document.createElement("img");
+    watermark.className = "card__watermark";
+    watermark.src = LOGO_URL;
+    watermark.alt = "";
+    card.appendChild(watermark);
+
+    const media = document.createElement("div");
+    media.className = "card__media";
+    const img = document.createElement("img");
+    img.className = "card__image";
+    img.src = p.image_url;
+    img.alt = p.name;
+    img.loading = "lazy";
+    media.appendChild(img);
+
+    const badge = document.createElement("span");
+    badge.className = inStock ? "badge badge--stock" : "badge badge--out";
+    badge.textContent = inStock ? "Disponible" : "Agotado";
+    media.appendChild(badge);
+    card.appendChild(media);
+
+    const ref = document.createElement("span");
+    ref.className = "tag tag--outline";
+    ref.textContent = `Ref. ${p.ref}`;
+    card.appendChild(ref);
+
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = p.name;
+    card.appendChild(title);
+
+    const price = document.createElement("div");
+    price.className = "card__price";
+    price.textContent = formatCOP(p.price);
+    card.appendChild(price);
+
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    const bto = document.createElement("span");
+    bto.textContent = `📦 BTO: ${p.bto}`;
+    meta.appendChild(bto);
+    if (p.medidas) {
+      const medidas = document.createElement("span");
+      medidas.textContent = `📐 ${p.medidas}`;
+      meta.appendChild(medidas);
+    }
+    card.appendChild(meta);
+
+    return card;
   }
 
   function render(query) {
@@ -85,7 +125,7 @@
     const visible = q
       ? decorated.filter((p) => p.name.toLowerCase().includes(q) || p.ref.toLowerCase().includes(q))
       : decorated;
-    grid.innerHTML = visible.map(cardMarkup).join("");
+    grid.replaceChildren(...visible.map(buildCard));
     grid.hidden = visible.length === 0;
     noResults.hidden = visible.length !== 0;
   }
