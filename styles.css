@@ -92,6 +92,26 @@ img { display: block; max-width: 100%; }
 .search__input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
 .search__input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 
+.cart-button { position: relative; flex-shrink: 0; }
+.cart-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--color-bg);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+}
+.cart-count[hidden] { display: none; }
+
 /* — catalog grid — */
 .catalog { max-width: 1280px; margin: 0 auto; padding: var(--space-6); }
 .product-grid {
@@ -99,6 +119,7 @@ img { display: block; max-width: 100%; }
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--space-4);
 }
+.product-grid[hidden] { display: none; }
 
 @keyframes bjv-pop {
   from { opacity: 0; transform: scale(0.94) translateY(6px); }
@@ -168,6 +189,7 @@ img { display: block; max-width: 100%; }
   border-radius: 16px;
 }
 
+.badge[hidden] { display: none; }
 .badge {
   position: absolute;
   top: 11px;
@@ -239,6 +261,13 @@ img { display: block; max-width: 100%; }
   gap: 2px;
 }
 
+.card__add-btn {
+  margin-top: 4px;
+  font-size: 13px;
+  padding: 8px 14px;
+}
+.card__add-btn--added { background: var(--sage-700) !important; }
+
 .no-results { text-align: center; padding: var(--space-8) 0; opacity: 0.6; }
 .no-results__title { font-family: var(--font-heading); font-size: 20px; }
 .no-results__body { font-size: 14px; }
@@ -273,8 +302,55 @@ img { display: block; max-width: 100%; }
 .btn--primary:active { background: var(--accent-700); }
 .btn--ghost { color: var(--accent); background: transparent; padding-inline: 4px; }
 .btn--ghost:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.btn--secondary { border-color: var(--color-divider); background: var(--color-surface); color: var(--color-text); }
+.btn--secondary:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
 .btn--icon { width: 36px; height: 36px; padding: 0; }
 .btn--block { width: 100%; margin-top: var(--space-2); }
+
+/* — carrito y checkout — */
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  align-self: center;
+  background: var(--color-surface);
+  border-radius: 999px;
+  padding: 4px;
+}
+.qty-stepper__value { min-width: 1.5em; text-align: center; font-weight: 600; }
+.dialog__actions--stack { flex-direction: column; align-items: center; gap: var(--space-2); }
+.dialog-title-text { font-family: var(--font-heading); font-size: 20px; }
+
+.cart-items { display: flex; flex-direction: column; gap: var(--space-3); max-height: 50vh; overflow-y: auto; }
+.cart-items[hidden] { display: none; }
+.cart-item { display: flex; gap: var(--space-3); align-items: center; }
+.cart-item__media {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 10px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.5); padding: 4px; box-sizing: border-box;
+}
+.cart-item__media img { width: 100%; height: 100%; object-fit: contain; }
+.cart-item__info { flex: 1; min-width: 0; }
+.cart-item__name { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.cart-item__ref { font-size: 11px; opacity: 0.6; }
+.cart-item__price { font-family: var(--font-heading); font-size: 14px; color: var(--accent-700); margin-top: 2px; }
+.cart-item__controls { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.cart-item__remove { opacity: 0.55; }
+.cart-item__remove:hover { opacity: 1; }
+.cart-total-row[hidden] { display: none; }
+.cart-total-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-top: var(--space-3); border-top: 1px solid var(--color-divider);
+  font-family: var(--font-heading); font-size: 22px; color: var(--accent-700);
+}
+
+.checkout-form { display: flex; flex-direction: column; gap: var(--space-3); }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.input {
+  width: 100%; min-height: 40px; padding: 8px 14px; font: inherit; font-size: 14px;
+  color: var(--color-text); background: var(--color-bg); border: 1px solid var(--color-divider);
+  border-radius: 12px;
+}
+.input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 
 /* — modal — */
 .dialog-backdrop {

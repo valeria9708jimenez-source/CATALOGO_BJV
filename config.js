@@ -4,5 +4,4 @@
 const SUPABASE_URL = "https://vpfzpkszjcxjsvcjowwh.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_F39EKLZqyclDFLTPjGYhnQ_phHw_zNA";
 
-// Placeholder — swap in the real BJV WhatsApp number (digits only, country code first, e.g. "573001234567").
-const WHATSAPP_NUMBER = "573000000000";
+const WHATSAPP_NUMBER = "573002219550";

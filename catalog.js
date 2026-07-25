@@ -1,4 +1,6 @@
 (() => {
+  const CART_STORAGE_KEY = "bjv-cart";
+
   const FALLBACK_STRIPS = ["#ffe1d0", "#e1eecc", "#dcebfa", "#e9e1f7"];
 
   const CATEGORY_RULES = [
@@ -28,11 +30,6 @@
 
   function isInStock(p) { return p.in_stock !== false; }
 
-  function waLink(p) {
-    const text = encodeURIComponent(`Hola BJV, quiero pedir el producto ${p.ref} - ${p.name}.`);
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
-  }
-
   const loadingState = document.getElementById("loading-state");
   const errorState = document.getElementById("error-state");
   const grid = document.getElementById("product-grid");
@@ -42,12 +39,67 @@
 
   let decorated = [];
 
+  // — carrito —
+  // Estado: [{ ref, qty }]. Los datos del producto (nombre/precio/foto) siempre
+  // se leen en vivo desde `decorated` — el carrito solo guarda referencia + cantidad,
+  // así nunca queda desincronizado si un precio cambia en Supabase.
+  let cart = [];
+  try {
+    const stored = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || "[]");
+    if (Array.isArray(stored)) cart = stored.filter((it) => it && typeof it.ref === "string" && it.qty > 0);
+  } catch { /* localStorage no disponible o corrupto — arranca con carrito vacío */ }
+
+  function saveCart() {
+    try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)); } catch { /* modo privado, etc. */ }
+  }
+
+  function findProduct(ref) { return decorated.find((p) => p.ref === ref); }
+
+  function addToCart(ref, qty) {
+    const line = cart.find((it) => it.ref === ref);
+    if (line) line.qty += qty;
+    else cart.push({ ref, qty });
+    saveCart();
+    renderCartBadge();
+  }
+
+  function setQty(ref, qty) {
+    if (qty <= 0) {
+      cart = cart.filter((it) => it.ref !== ref);
+    } else {
+      const line = cart.find((it) => it.ref === ref);
+      if (line) line.qty = qty;
+    }
+    saveCart();
+    renderCartBadge();
+    renderCartItems();
+  }
+
+  function cartCount() { return cart.reduce((sum, it) => sum + it.qty, 0); }
+  function cartLines() {
+    return cart
+      .map((it) => ({ item: it, product: findProduct(it.ref) }))
+      .filter((l) => l.product);
+  }
+  function cartTotal() {
+    return cartLines().reduce((sum, l) => sum + (l.product.price || 0) * l.item.qty, 0);
+  }
+
+  const cartCountEl = document.getElementById("cart-count");
+  function renderCartBadge() {
+    const n = cartCount();
+    cartCountEl.textContent = String(n);
+    cartCountEl.hidden = n === 0;
+  }
+
   function buildCard(p) {
     const inStock = isInStock(p);
-    const card = document.createElement("button");
-    card.type = "button";
+    const card = document.createElement("div");
     card.className = "card" + (inStock ? "" : " card--out-of-stock");
     card.dataset.ref = p.ref;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Ver detalle de ${p.name}`);
 
     const strip = document.createElement("div");
     strip.className = "card__strip";
@@ -105,6 +157,14 @@
     }
     content.appendChild(meta);
 
+    if (inStock) {
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "btn btn--primary btn--block card__add-btn";
+      addBtn.textContent = "Agregar al carrito";
+      content.appendChild(addBtn);
+    }
+
     card.appendChild(content);
     return card;
   }
@@ -119,16 +179,46 @@
     noResults.hidden = visible.length !== 0;
   }
 
+  // Un solo listener delegado: el botón "Agregar al carrito" vive DENTRO de la
+  // tarjeta, que ya no es un <button> (no se puede anidar un <button> dentro de
+  // otro) sino un div con role="button" — este listener decide cuál de los dos
+  // disparó el click antes de actuar.
   grid.addEventListener("click", (e) => {
     const card = e.target.closest(".card");
     if (!card) return;
-    const product = decorated.find((p) => p.ref === card.dataset.ref);
+    const product = findProduct(card.dataset.ref);
+    if (!product) return;
+    const addBtn = e.target.closest(".card__add-btn");
+    if (addBtn) {
+      addToCart(product.ref, 1);
+      flashAdded(addBtn);
+      return;
+    }
+    openModal(product);
+  });
+  grid.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (e.target.closest(".card__add-btn")) return;
+    const card = e.target.closest(".card");
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    const product = findProduct(card.dataset.ref);
     if (product) openModal(product);
   });
 
+  function flashAdded(btn) {
+    const original = btn.textContent;
+    btn.textContent = "✓ Agregado";
+    btn.classList.add("card__add-btn--added");
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.classList.remove("card__add-btn--added");
+    }, 1100);
+  }
+
   searchInput.addEventListener("input", (e) => render(e.target.value));
 
-  // — modal —
+  // — modal de producto —
   const backdrop = document.getElementById("modal-backdrop");
   const dialog = document.getElementById("modal-dialog");
   const modalImage = document.getElementById("modal-image");
@@ -138,9 +228,18 @@
   const modalPrice = document.getElementById("modal-price");
   const modalBulto = document.getElementById("modal-bulto");
   const modalMedidas = document.getElementById("modal-medidas");
-  const modalWhatsapp = document.getElementById("modal-whatsapp");
+  const modalQtyValue = document.getElementById("modal-qty-value");
+  const modalQtyMinus = document.getElementById("modal-qty-minus");
+  const modalQtyPlus = document.getElementById("modal-qty-plus");
+  const modalAddCart = document.getElementById("modal-add-cart");
+
+  let modalProduct = null;
+  let modalQty = 1;
 
   function openModal(p) {
+    modalProduct = p;
+    modalQty = 1;
+    modalQtyValue.textContent = "1";
     modalImage.src = p.image_url;
     modalImage.alt = p.name;
     modalBadge.hidden = !isInStock(p);
@@ -149,16 +248,184 @@
     modalPrice.textContent = formatCOP(p.price);
     modalBulto.textContent = `📦 Presentación: BTO: ${p.bto}`;
     modalMedidas.textContent = p.medidas ? `📐 Medidas: ${p.medidas}` : "";
-    modalWhatsapp.href = waLink(p);
+    modalAddCart.disabled = !isInStock(p);
+    modalAddCart.textContent = isInStock(p) ? "Agregar al carrito" : "Agotado";
     backdrop.hidden = false;
   }
+  function closeModal() { backdrop.hidden = true; modalProduct = null; }
 
-  function closeModal() { backdrop.hidden = true; }
+  modalQtyMinus.addEventListener("click", () => {
+    modalQty = Math.max(1, modalQty - 1);
+    modalQtyValue.textContent = String(modalQty);
+  });
+  modalQtyPlus.addEventListener("click", () => {
+    modalQty = Math.min(999, modalQty + 1);
+    modalQtyValue.textContent = String(modalQty);
+  });
+  modalAddCart.addEventListener("click", () => {
+    if (!modalProduct) return;
+    addToCart(modalProduct.ref, modalQty);
+    flashAdded(modalAddCart);
+    setTimeout(() => { if (!backdrop.hidden) closeModal(); }, 650);
+  });
 
   document.getElementById("modal-close").addEventListener("click", closeModal);
   backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeModal(); });
   dialog.addEventListener("click", (e) => e.stopPropagation());
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !backdrop.hidden) closeModal(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!checkoutBackdrop.hidden) closeCheckout();
+    else if (!cartBackdrop.hidden) closeCart();
+    else if (!backdrop.hidden) closeModal();
+  });
+
+  // — carrito (drawer) —
+  const cartButton = document.getElementById("cart-button");
+  const cartBackdrop = document.getElementById("cart-backdrop");
+  const cartDialog = document.getElementById("cart-dialog");
+  const cartItemsEl = document.getElementById("cart-items");
+  const cartEmptyEl = document.getElementById("cart-empty");
+  const cartTotalRow = document.getElementById("cart-total-row");
+  const cartTotalEl = document.getElementById("cart-total");
+  const cartCheckoutBtn = document.getElementById("cart-checkout-btn");
+
+  function buildCartItemRow(line) {
+    const { item, product } = line;
+    const row = document.createElement("div");
+    row.className = "cart-item";
+
+    const media = document.createElement("div");
+    media.className = "cart-item__media";
+    const img = document.createElement("img");
+    img.src = product.image_url;
+    img.alt = product.name;
+    media.appendChild(img);
+    row.appendChild(media);
+
+    const info = document.createElement("div");
+    info.className = "cart-item__info";
+    const name = document.createElement("div");
+    name.className = "cart-item__name";
+    name.textContent = product.name;
+    info.appendChild(name);
+    const ref = document.createElement("div");
+    ref.className = "cart-item__ref";
+    ref.textContent = `Ref. ${product.ref}`;
+    info.appendChild(ref);
+    const price = document.createElement("div");
+    price.className = "cart-item__price";
+    price.textContent = formatCOP((product.price || 0) * item.qty);
+    info.appendChild(price);
+    row.appendChild(info);
+
+    const controls = document.createElement("div");
+    controls.className = "cart-item__controls";
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.className = "btn btn--ghost btn--icon";
+    minus.textContent = "−";
+    minus.setAttribute("aria-label", "Restar unidad");
+    minus.addEventListener("click", () => setQty(product.ref, item.qty - 1));
+    controls.appendChild(minus);
+    const qtyLabel = document.createElement("span");
+    qtyLabel.className = "qty-stepper__value";
+    qtyLabel.textContent = String(item.qty);
+    controls.appendChild(qtyLabel);
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "btn btn--ghost btn--icon";
+    plus.textContent = "+";
+    plus.setAttribute("aria-label", "Sumar unidad");
+    plus.addEventListener("click", () => setQty(product.ref, item.qty + 1));
+    controls.appendChild(plus);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn--ghost btn--icon cart-item__remove";
+    remove.setAttribute("aria-label", "Quitar del carrito");
+    remove.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>';
+    remove.addEventListener("click", () => setQty(product.ref, 0));
+    controls.appendChild(remove);
+    row.appendChild(controls);
+
+    return row;
+  }
+
+  function renderCartItems() {
+    const lines = cartLines();
+    cartItemsEl.replaceChildren(...lines.map(buildCartItemRow));
+    const empty = lines.length === 0;
+    cartEmptyEl.hidden = !empty;
+    cartItemsEl.hidden = empty;
+    cartTotalRow.hidden = empty;
+    cartCheckoutBtn.disabled = empty;
+    if (!empty) cartTotalEl.textContent = formatCOP(cartTotal());
+  }
+
+  function openCart() { renderCartItems(); cartBackdrop.hidden = false; }
+  function closeCart() { cartBackdrop.hidden = true; }
+
+  cartButton.addEventListener("click", openCart);
+  document.getElementById("cart-close").addEventListener("click", closeCart);
+  cartBackdrop.addEventListener("click", (e) => { if (e.target === cartBackdrop) closeCart(); });
+  cartDialog.addEventListener("click", (e) => e.stopPropagation());
+
+  // — checkout —
+  const checkoutBackdrop = document.getElementById("checkout-backdrop");
+  const checkoutDialog = document.getElementById("checkout-dialog");
+  const checkoutForm = document.getElementById("checkout-form");
+  const checkoutName = document.getElementById("checkout-name");
+  const checkoutCedula = document.getElementById("checkout-cedula");
+  const checkoutAddress = document.getElementById("checkout-address");
+  const checkoutCity = document.getElementById("checkout-city");
+
+  function openCheckout() { closeCart(); checkoutBackdrop.hidden = false; checkoutName.focus(); }
+  function closeCheckout() { checkoutBackdrop.hidden = true; }
+
+  cartCheckoutBtn.addEventListener("click", () => { if (cart.length) openCheckout(); });
+  document.getElementById("checkout-close").addEventListener("click", closeCheckout);
+  checkoutBackdrop.addEventListener("click", (e) => { if (e.target === checkoutBackdrop) closeCheckout(); });
+  checkoutDialog.addEventListener("click", (e) => e.stopPropagation());
+
+  function buildOrderMessage(contact) {
+    const lines = cartLines();
+    const itemLines = lines.map(({ item, product }) => {
+      const subtotal = product.price != null ? formatCOP(product.price * item.qty) : "por confirmar";
+      return `- ${product.ref} ${product.name} x${item.qty} — ${subtotal}`;
+    });
+    return [
+      "Hola BJV, quiero confirmar este pedido:",
+      "",
+      `*Cliente:* ${contact.name}`,
+      `*Cédula:* ${contact.cedula}`,
+      `*Dirección:* ${contact.address}, ${contact.city}`,
+      "",
+      "*Pedido:*",
+      ...itemLines,
+      "",
+      `*Total: ${formatCOP(cartTotal())}*`,
+    ].join("\n");
+  }
+
+  checkoutForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const contact = {
+      name: checkoutName.value.trim(),
+      cedula: checkoutCedula.value.trim(),
+      address: checkoutAddress.value.trim(),
+      city: checkoutCity.value.trim(),
+    };
+    if (!contact.name || !contact.cedula || !contact.address || !contact.city || cart.length === 0) return;
+
+    const message = buildOrderMessage(contact);
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank", "noopener");
+
+    cart = [];
+    saveCart();
+    renderCartBadge();
+    checkoutForm.reset();
+    closeCheckout();
+  });
 
   // — carga en vivo desde Supabase —
   const LOGO_URL = `${SUPABASE_URL}/storage/v1/object/public/products/logo-bjv.png`;
@@ -180,6 +447,9 @@
 
     decorated = data.map((p, i) => ({ ...p, ...categoryStyle(p.name, i) }));
     productCountEl.textContent = String(decorated.length);
+    cart = cart.filter((it) => findProduct(it.ref));
+    saveCart();
+    renderCartBadge();
     render(searchInput.value);
   }
 
