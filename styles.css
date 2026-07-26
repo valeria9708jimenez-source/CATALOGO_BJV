@@ -371,7 +371,7 @@ img { display: block; max-width: 100%; }
   gap: var(--space-3);
   padding: var(--space-4);
   border-radius: 32px;
-  background: var(--color-surface);
+  background: var(--card-bg);
   box-shadow: var(--shadow-lg);
 }
 .dialog__strip {

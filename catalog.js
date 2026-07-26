@@ -245,6 +245,7 @@
     modalImage.src = p.image_url;
     modalImage.alt = p.name;
     modalBadge.hidden = !isInStock(p);
+    modalBadge.textContent = "Disponible";
     modalRef.textContent = `Ref. ${p.ref}`;
     modalName.textContent = p.name;
     modalPrice.textContent = formatCOP(p.price);
