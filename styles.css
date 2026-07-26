@@ -112,6 +112,26 @@ img { display: block; max-width: 100%; }
 }
 .cart-count[hidden] { display: none; }
 
+/* — filtros — */
+.filters-bar { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.select-wrap { position: relative; }
+.select-wrap__icon { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); opacity: 0.55; pointer-events: none; }
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 36px;
+  padding: 6px 34px 6px 16px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.select:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+.select:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+
 /* — catalog grid — */
 .catalog { max-width: 1280px; margin: 0 auto; padding: var(--space-6); }
 .product-grid {

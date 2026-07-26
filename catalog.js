@@ -4,21 +4,23 @@
   const FALLBACK_STRIPS = ["#ffe1d0", "#e1eecc", "#dcebfa", "#e9e1f7"];
 
   const CATEGORY_RULES = [
-    { test: /princesa|muñeca/, strip: "#F6B8C4" },
-    { test: /tocador|maquillaje|accesorio|bisuteria|bisutería|pulsera|trenza|jewelry/, strip: "#C7B8ED" },
-    { test: /dibujo/, strip: "#F0CE85" },
-    { test: /policia|policía|carro|pista|excavadora|control remoto/, strip: "#A8CBEE" },
-    { test: /pistola|rifle/, strip: "#F4B784" },
-    { test: /bebe|bebé/, strip: "#A9D3EC" },
-    { test: /cocina/, strip: "#8ED9C9" },
-    { test: /dinosaurio/, strip: "#B3C182" },
-    { test: /instrumento|guitarra|musical/, strip: "#B0A6DD" },
+    { label: "Muñecas y Princesas", test: /princesa|muñeca/, strip: "#F6B8C4" },
+    { label: "Tocador y Accesorios", test: /tocador|maquillaje|accesorio|bisuteria|bisutería|pulsera|trenza|jewelry/, strip: "#C7B8ED" },
+    { label: "Dibujo", test: /dibujo/, strip: "#F0CE85" },
+    { label: "Carros y Control Remoto", test: /policia|policía|carro|pista|excavadora|control remoto/, strip: "#A8CBEE" },
+    { label: "Pistolas y Rifles", test: /pistola|rifle/, strip: "#F4B784" },
+    { label: "Bebés", test: /bebe|bebé/, strip: "#A9D3EC" },
+    { label: "Cocina", test: /cocina/, strip: "#8ED9C9" },
+    { label: "Dinosaurios", test: /dinosaurio/, strip: "#B3C182" },
+    { label: "Instrumentos Musicales", test: /instrumento|guitarra|musical/, strip: "#B0A6DD" },
   ];
+  const OTROS_LABEL = "Otros";
 
   function categoryStyle(name, index) {
     const n = name.toLowerCase();
     const rule = CATEGORY_RULES.find((r) => r.test.test(n));
     return {
+      label: rule ? rule.label : OTROS_LABEL,
       strip: rule ? rule.strip : FALLBACK_STRIPS[index % FALLBACK_STRIPS.length],
     };
   }
@@ -36,8 +38,12 @@
   const noResults = document.getElementById("no-results");
   const searchInput = document.getElementById("search-input");
   const productCountEl = document.getElementById("product-count");
+  const sortSelect = document.getElementById("sort-select");
+  const categorySelect = document.getElementById("category-select");
 
   let decorated = [];
+  let sortMode = "default";
+  let activeCategory = "todas";
 
   // — carrito —
   // Estado: [{ ref, qty }]. Los datos del producto (nombre/precio/foto) siempre
@@ -169,14 +175,39 @@
     return card;
   }
 
-  function render(query) {
-    const q = query.trim().toLowerCase();
-    const visible = q
-      ? decorated.filter((p) => p.name.toLowerCase().includes(q) || p.ref.toLowerCase().includes(q))
-      : decorated;
+  function getFilteredSorted() {
+    const q = searchInput.value.trim().toLowerCase();
+    let list = decorated.filter((p) => {
+      const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.ref.toLowerCase().includes(q);
+      const matchesCategory = activeCategory === "todas" || p.label === activeCategory;
+      return matchesQuery && matchesCategory;
+    });
+    list = list.slice();
+    if (sortMode === "price-asc") list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+    else if (sortMode === "price-desc") list.sort((a, b) => (b.price ?? -Infinity) - (a.price ?? -Infinity));
+    else if (sortMode === "name-asc") list.sort((a, b) => a.name.localeCompare(b.name, "es"));
+    else if (sortMode === "name-desc") list.sort((a, b) => b.name.localeCompare(a.name, "es"));
+    return list;
+  }
+
+  function render() {
+    const visible = getFilteredSorted();
     grid.replaceChildren(...visible.map(buildCard));
     grid.hidden = visible.length === 0;
     noResults.hidden = visible.length !== 0;
+  }
+
+  function populateCategoryOptions() {
+    const present = [];
+    for (const p of decorated) if (!present.includes(p.label)) present.push(p.label);
+    const ordered = [
+      ...CATEGORY_RULES.map((r) => r.label).filter((l) => present.includes(l)),
+      ...(present.includes(OTROS_LABEL) ? [OTROS_LABEL] : []),
+    ];
+    categorySelect.replaceChildren(
+      new Option("Categoría: todas", "todas"),
+      ...ordered.map((label) => new Option(label, label))
+    );
   }
 
   // Un solo listener delegado: el botón "Agregar al carrito" vive DENTRO de la
@@ -216,7 +247,9 @@
     }, 1100);
   }
 
-  searchInput.addEventListener("input", (e) => render(e.target.value));
+  searchInput.addEventListener("input", () => render());
+  sortSelect.addEventListener("change", () => { sortMode = sortSelect.value; render(); });
+  categorySelect.addEventListener("change", () => { activeCategory = categorySelect.value; render(); });
 
   // — modal de producto —
   const backdrop = document.getElementById("modal-backdrop");
@@ -453,7 +486,8 @@
     cart = cart.filter((it) => findProduct(it.ref));
     saveCart();
     renderCartBadge();
-    render(searchInput.value);
+    populateCategoryOptions();
+    render();
   }
 
   loadProducts();

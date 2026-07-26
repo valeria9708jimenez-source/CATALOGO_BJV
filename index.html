@@ -33,6 +33,24 @@
 </header>
 
 <main class="catalog">
+  <div class="filters-bar">
+    <div class="select-wrap">
+      <select id="sort-select" class="select">
+        <option value="default">Ordenar: recomendado</option>
+        <option value="price-asc">Precio: menor a mayor</option>
+        <option value="price-desc">Precio: mayor a menor</option>
+        <option value="name-asc">Nombre: A-Z</option>
+        <option value="name-desc">Nombre: Z-A</option>
+      </select>
+      <svg class="select-wrap__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+    </div>
+    <div class="select-wrap">
+      <select id="category-select" class="select">
+        <option value="todas">Categoría: todas</option>
+      </select>
+      <svg class="select-wrap__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+    </div>
+  </div>
   <div id="loading-state" class="no-results">
     <div class="no-results__title">Cargando catálogo…</div>
   </div>
