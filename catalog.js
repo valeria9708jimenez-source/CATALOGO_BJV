@@ -221,6 +221,7 @@
   // — modal de producto —
   const backdrop = document.getElementById("modal-backdrop");
   const dialog = document.getElementById("modal-dialog");
+  const modalStrip = document.getElementById("modal-strip");
   const modalImage = document.getElementById("modal-image");
   const modalBadge = document.getElementById("modal-badge");
   const modalRef = document.getElementById("modal-ref");
@@ -240,6 +241,7 @@
     modalProduct = p;
     modalQty = 1;
     modalQtyValue.textContent = "1";
+    modalStrip.style.background = p.strip;
     modalImage.src = p.image_url;
     modalImage.alt = p.name;
     modalBadge.hidden = !isInStock(p);

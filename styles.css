@@ -374,6 +374,11 @@ img { display: block; max-width: 100%; }
   background: var(--color-surface);
   box-shadow: var(--shadow-lg);
 }
+.dialog__strip {
+  height: 6px;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  border-radius: 32px 32px 0 0;
+}
 .dialog__media {
   position: relative;
   width: 100%;
