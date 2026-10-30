@@ -151,6 +151,11 @@
     price.textContent = formatCOP(p.price);
     content.appendChild(price);
 
+    const priceNote = document.createElement("div");
+    priceNote.className = "card__price-note";
+    priceNote.textContent = "IVA incluido";
+    content.appendChild(priceNote);
+
     const meta = document.createElement("div");
     meta.className = "card__meta";
     const bto = document.createElement("span");

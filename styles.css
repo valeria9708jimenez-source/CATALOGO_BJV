@@ -273,6 +273,12 @@ img { display: block; max-width: 100%; }
   color: var(--accent-700);
 }
 
+.card__price-note {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: -4px;
+}
+
 .card__meta {
   font-size: 12px;
   opacity: 0.7;
