@@ -153,7 +153,7 @@
 
     const priceNote = document.createElement("div");
     priceNote.className = "card__price-note";
-    priceNote.textContent = "IVA incluido";
+    priceNote.textContent = "Precio incluido IVA";
     content.appendChild(priceNote);
 
     const meta = document.createElement("div");
