@@ -475,7 +475,7 @@
   async function loadProducts() {
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
     const { data, error } = await client
-      .from("products")
+      .from("products_retail")
       .select("*")
       .order("sort_order", { ascending: true });
 
